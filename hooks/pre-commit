@@ -1,0 +1,46 @@
+#!/bin/bash
+
+echo "Running pre-commit checks..."
+
+FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.py$')
+
+if [ -z "$FILES" ]; then
+    echo "No Python files staged."
+    exit 0
+fi
+
+echo "Checking formatting..."
+
+black --check $FILES
+
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "COMMIT BLOCKED"
+    echo "Python files are not formatted."
+    echo "Run: black ."
+    exit 1
+fi
+
+echo "Running flake8..."
+
+flake8 $FILES
+
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "COMMIT BLOCKED"
+    echo "Linting errors found."
+    exit 1
+fi
+
+echo "Checking for TODOs and passwords..."
+
+if grep -En "(TODO|password\s*=|api_key\s*=|secret\s*=)" $FILES; then
+    echo ""
+    echo "COMMIT BLOCKED"
+    echo "Sensitive information or TODO found."
+    exit 1
+fi
+
+echo ""
+echo "All checks passed."
+exit 0
